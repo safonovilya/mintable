@@ -23,11 +23,11 @@ const sheets = google.sheets({
   auth: OAUTH2_CLIENT
 })
 
-const promisify = (f, args) => {
+const promisify = (f, args, context) => {
   if (process.env.DEBUG) {
     console.log(JSON.stringify(args, null, 2))
   }
-  return new Promise((resolve, reject) => f(args, (error, data) => (error ? reject(error) : resolve(data))))
+  return new Promise((resolve, reject) => f.call(context, args, (error, data) => (error ? reject(error) : resolve(data))))
 }
 
 const getAuthURL = () =>
@@ -53,28 +53,38 @@ const getToken = code =>
     `Fetching token for code ${code}`
   )
 
-const getSheets = spreadsheetId =>
+const getSheets = async spreadsheetId =>
   wrapPromise(
-    promisify(sheets.spreadsheets.get, { spreadsheetId: spreadsheetId }).then(res => res.data.sheets),
+    // promisify(sheets.spreadsheets.get, { spreadsheetId: spreadsheetId }).then(res => res.data.sheets),
+    (async () => {
+      const response = await sheets.spreadsheets.get( { spreadsheetId: spreadsheetId })
+      return response.data.sheets;
+    })(),
     `Fetching sheets for spreadsheet ID ${spreadsheetId}`
   )
 
 const duplicateSheet = (sourceSpreadsheetId, sourceSheetId) =>
   wrapPromise(
-    promisify(sheets.spreadsheets.sheets.copyTo, {
-      spreadsheetId: sourceSpreadsheetId,
-      sheetId: sourceSheetId,
-      resource: { destinationSpreadsheetId: process.env.SHEETS_SHEET_ID }
-    }).then(res => ({ properties: res.data })),
+    (async () => {
+      const response = await sheets.spreadsheets.sheets.copyTo( {
+        spreadsheetId: sourceSpreadsheetId,
+        sheetId: sourceSheetId,
+        resource: { destinationSpreadsheetId: process.env.SHEETS_SHEET_ID }
+      })
+      return { properties: response.data }
+    })(),
     `Duplicating sheet ${sourceSheetId}`
   )
 
 const addSheet = title =>
   wrapPromise(
-    promisify(sheets.spreadsheets.batchUpdate, {
-      spreadsheetId: process.env.SHEETS_SHEET_ID,
-      resource: { requests: [{ addSheet: { properties: { title } } }] }
-    }).then(res => res.data.replies[0].addSheet),
+    (async () => {
+      const response = await sheets.spreadsheets.batchUpdate( {
+        spreadsheetId: process.env.SHEETS_SHEET_ID,
+        resource: { requests: [{ addSheet: { properties: { title } } }] }
+      })
+      return response.data.replies[0].addSheet
+    })(),
     `Creating new sheet ${title}`
   )
 
@@ -85,64 +95,111 @@ const renameSheet = (sheetId, title) =>
       resource: {
         requests: [{ updateSheetProperties: { properties: { sheetId: sheetId, title: title }, fields: 'title' } }]
       }
-    }).then(res => res.data),
+    }, this).then(res => res.data),
     `Renaming sheet ${title}`
   )
 
 const clearRanges = ranges => {
   return wrapPromise(
-    promisify(sheets.spreadsheets.values.batchClear, { spreadsheetId: process.env.SHEETS_SHEET_ID, ranges }),
+    // promisify(sheets.spreadsheets.values.batchClear, { spreadsheetId: process.env.SHEETS_SHEET_ID, ranges }, this),
+    (async () => {
+      return await sheets.spreadsheets.values.batchClear( { spreadsheetId: process.env.SHEETS_SHEET_ID, ranges })
+    })(),
     `Clearing ranges ${ranges.join(', ')}`
   )
 }
 
 const updateRanges = updatedRanges =>
   wrapPromise(
-    promisify(sheets.spreadsheets.values.batchUpdate, {
-      spreadsheetId: process.env.SHEETS_SHEET_ID,
-      resource: {
-        valueInputOption: `USER_ENTERED`,
-        data: updatedRanges
-      }
-    }),
+    // promisify(sheets.spreadsheets.values.batchUpdate, {
+    //   spreadsheetId: process.env.SHEETS_SHEET_ID,
+    //   resource: {
+    //     valueInputOption: `USER_ENTERED`,
+    //     data: updatedRanges
+    //   }
+    // }, this),
+    (async () => {
+      return await sheets.spreadsheets.values.batchUpdate( {
+        spreadsheetId: process.env.SHEETS_SHEET_ID,
+        resource: {
+          valueInputOption: `USER_ENTERED`,
+          data: updatedRanges
+        }
+      })
+    })(),
     `Updating cell ranges ${_.map(updatedRanges, d => d.range).join(', ')}`
   )
 
 const formatSheets = (sheetIds, numColumnsToResize) =>
   wrapPromise(
-    promisify(sheets.spreadsheets.batchUpdate, {
-      spreadsheetId: process.env.SHEETS_SHEET_ID,
-      resource: {
-        requests: _.flatten(
-          _.map(sheetIds, sheetId => [
-            {
-              repeatCell: {
-                range: { sheetId: sheetId, startRowIndex: 0, endRowIndex: 1 },
-                cell: {
-                  userEnteredFormat: {
-                    backgroundColor: { red: 0.3, green: 0.3, blue: 0.3 },
-                    horizontalAlignment: 'CENTER',
-                    textFormat: { foregroundColor: { red: 1.0, green: 1.0, blue: 1.0 }, fontSize: 12, bold: true }
-                  }
-                },
-                fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)'
+    // promisify(sheets.spreadsheets.batchUpdate, {
+    //   spreadsheetId: process.env.SHEETS_SHEET_ID,
+    //   resource: {
+    //     requests: _.flatten(
+    //       _.map(sheetIds, sheetId => [
+    //         {
+    //           repeatCell: {
+    //             range: { sheetId: sheetId, startRowIndex: 0, endRowIndex: 1 },
+    //             cell: {
+    //               userEnteredFormat: {
+    //                 backgroundColor: { red: 0.3, green: 0.3, blue: 0.3 },
+    //                 horizontalAlignment: 'CENTER',
+    //                 textFormat: { foregroundColor: { red: 1.0, green: 1.0, blue: 1.0 }, fontSize: 12, bold: true }
+    //               }
+    //             },
+    //             fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)'
+    //           }
+    //         },
+    //         {
+    //           updateSheetProperties: {
+    //             properties: { sheetId: sheetId, gridProperties: { frozenRowCount: 1 } },
+    //             fields: 'gridProperties.frozenRowCount'
+    //           }
+    //         },
+    //         {
+    //           autoResizeDimensions: {
+    //             dimensions: { sheetId: sheetId, dimension: 'COLUMNS', startIndex: 0, endIndex: numColumnsToResize }
+    //           }
+    //         }
+    //       ])
+    //     )
+    //   }
+    // }, this),
+    (async () => {
+      return await sheets.spreadsheets.batchUpdate( {
+        spreadsheetId: process.env.SHEETS_SHEET_ID,
+        resource: {
+          requests: _.flatten(
+            _.map(sheetIds, sheetId => [
+              {
+                repeatCell: {
+                  range: { sheetId: sheetId, startRowIndex: 0, endRowIndex: 1 },
+                  cell: {
+                    userEnteredFormat: {
+                      backgroundColor: { red: 0.3, green: 0.3, blue: 0.3 },
+                      horizontalAlignment: 'CENTER',
+                      textFormat: { foregroundColor: { red: 1.0, green: 1.0, blue: 1.0 }, fontSize: 12, bold: true }
+                    }
+                  },
+                  fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)'
+                }
+              },
+              {
+                updateSheetProperties: {
+                  properties: { sheetId: sheetId, gridProperties: { frozenRowCount: 1 } },
+                  fields: 'gridProperties.frozenRowCount'
+                }
+              },
+              {
+                autoResizeDimensions: {
+                  dimensions: { sheetId: sheetId, dimension: 'COLUMNS', startIndex: 0, endIndex: numColumnsToResize }
+                }
               }
-            },
-            {
-              updateSheetProperties: {
-                properties: { sheetId: sheetId, gridProperties: { frozenRowCount: 1 } },
-                fields: 'gridProperties.frozenRowCount'
-              }
-            },
-            {
-              autoResizeDimensions: {
-                dimensions: { sheetId: sheetId, dimension: 'COLUMNS', startIndex: 0, endIndex: numColumnsToResize }
-              }
-            }
-          ])
-        )
-      }
-    }),
+            ])
+          )
+        }
+      })
+    })(),
     `Formatting sheets ${sheetIds.join(', ')}`
   )
 
@@ -162,7 +219,7 @@ const sortSheets = order =>
           ])
         )
       }
-    }),
+    }, this),
     `Sorting sheets`
   )
 
@@ -175,9 +232,11 @@ const updateSheets = async (updates, options) => {
     numAutomatedColumns
   } = options
 
+  const context = this;
+
   let sheets = await getSheets(process.env.SHEETS_SHEET_ID)
   const templateSheet = _.find(
-    await getSheets(process.env.TEMPLATE_SHEET.SHEET_ID),
+    sheets,
     sheet => sheet.properties.title === process.env.TEMPLATE_SHEET.SHEET_TITLE
   )
 
@@ -186,7 +245,7 @@ const updateSheets = async (updates, options) => {
 
   // Create, rename, and clear required sheets
   await pEachSeries(_.difference(requiredSheetTitles, currentSheetTitles), async title => {
-    const newSheet = await duplicateSheet(process.env.TEMPLATE_SHEET.SHEET_ID, templateSheet.properties.sheetId)
+    const newSheet = await duplicateSheet.call(context, process.env.TEMPLATE_SHEET.SHEET_ID, templateSheet.properties.sheetId)
     await renameSheet(newSheet.properties.sheetId, title)
   })
 
@@ -215,11 +274,11 @@ const updateSheets = async (updates, options) => {
     })
   })
 
-  await updateRanges(updatedRanges)
+  updatedRanges.length > 0 && await updateRanges(updatedRanges)
 
   // Format header rows & resize columns
   const sheetIds = _.map(
-    _.pickBy(await getSheets(process.env.SHEETS_SHEET_ID), sheet =>
+    _.pickBy(sheets, sheet =>
       _.includes(requiredSheetTitles, sheet.properties.title)
     ),
     sheet => sheet.properties.sheetId

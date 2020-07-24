@@ -96,9 +96,14 @@ maybeWriteDefaultConfig().then(() => {
     })
 
     server.get('/google-sheets-oauth2callback', (req, res) => {
+      console.log(req.query.code);
+
       return require('../lib/google')
         .getToken(req.query.code)
-        .then(token => res.redirect(`http://${process.env.HOST}:${process.env.PORT}/sheet-provider-setup`))
+        .then(token => {
+          console.log("token: ", token)
+          res.redirect(`http://${process.env.HOST}:${process.env.PORT}/sheet-provider-setup`)
+        })
         .catch(error => res.json(error))
     })
 
