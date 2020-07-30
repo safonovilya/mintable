@@ -2,11 +2,8 @@ name: Fetch
 
 on:
   push:
-    branches: [ master, release/2.0.0 ]
-  
-  pull_request:
-    branches: [ master, release/2.0.0 ]
-  
+    branches: [ release/2.0.0 ]
+    
   schedule:
     - cron:  0 9 * * *
 
@@ -17,7 +14,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [12.x, 14.x]
+        node-version: [12.x]
 
     env:
       MINTABLE_CONFIG: ${{ secrets.MINTABLE_CONFIG }}
