@@ -6,9 +6,9 @@ on:
   
   pull_request:
     branches: [ master, release/2.0.0 ]
-
-   schedule:
-     - cron:  '0 9 * * *'
+  
+  schedule:
+    - cron:  0 9 * * *
 
 jobs:
   build:
