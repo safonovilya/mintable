@@ -31,3 +31,8 @@ jobs:
     - run: npm install
     - run: npm run build
     - run: node ./lib/scripts/cli.js fetch --ci
+    - name: notify telegram bot to check new Balance and send to chat
+      uses: lakuapik/gh-actions-http-status@v1
+      with:
+        sites: '["https://boring-finance-bot.herokuapp.com/"]'
+        expected: '[200]'
