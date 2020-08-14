@@ -34,5 +34,5 @@ jobs:
     - name: notify telegram bot to check new Balance and send to chat
       uses: lakuapik/gh-actions-http-status@v1
       with:
-        sites: '["https://boring-finance-bot.herokuapp.com/"]'
+        sites: '["https://boring-finance-bot.herokuapp.com/stat"]'
         expected: '[200]'
