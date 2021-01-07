@@ -121,7 +121,7 @@ export default () => {
                 integration: IntegrationId.Google,
                 properties: balanceColumns
             },
-            months_range: 2,
+            months_range: 2
         })
     } catch (e) {
         logError('Error migrating configuration.', e)
