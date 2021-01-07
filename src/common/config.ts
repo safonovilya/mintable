@@ -24,7 +24,8 @@ const DEFAULT_CONFIG: Config = {
         integration: IntegrationId.Google,
         properties: ['institution', 'account', 'type', 'current', 'available', 'limit', 'currency']
     },
-    integrations: {}
+    integrations: {},
+    months_range: 2,
 }
 
 export interface FileConfig {
@@ -43,7 +44,8 @@ export interface Config {
     integrations: { [id: string]: IntegrationConfig }
     accounts: { [id: string]: AccountConfig }
     transactions: TransactionConfig
-    balances: BalanceConfig
+    balances: BalanceConfig,
+    months_range: number, // number months ago to pull
 }
 
 export const getConfigSource = (): ConfigSource => {

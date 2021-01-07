@@ -8,6 +8,8 @@ import { Account } from '../../types/account'
 import { sortBy, groupBy } from 'lodash'
 import { startOfMonth, format, formatISO, parseISO } from 'date-fns'
 
+const ALL_TRANSACTIONS_SHEET_TITLE = 'all transactions';
+
 export interface Range {
     sheet: string
     start: string
@@ -337,6 +339,12 @@ export class GoogleIntegration {
 
         // Split transactions by month
         const groupedTransactions = groupBy(transactions, transaction => formatISO(startOfMonth(transaction.date)))
+
+        await this.updateSheet(
+          ALL_TRANSACTIONS_SHEET_TITLE,
+          transactions,
+          this.config.transactions.properties
+        )
 
         // Write transactions by month, copying template sheet if necessary
         for (const month in groupedTransactions) {
